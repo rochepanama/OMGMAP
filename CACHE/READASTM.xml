@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="21" zv="Cache for Windows (x86-32) 2007.1.3 (Build 607U)" ts="2013-09-04 17:18:35">
+<Routine name="READASTM" type="MAC" languagemode="0" timestamp="63042,57845"><![CDATA[
+READASTM
+ /**
+  *	Procedure to read incoming ASTM files to create requests on Omega. The files
+  * must be named in the following format: 
+  *		requestno.pet
+  * 
+  * Where "requestno" is the request number sent to Omega and ".pet" is the extension (lowercase)
+  *
+  * @author 	<a href="mailto:ivan.quintero@roche.com">Ivan Quintero</a>
+  * @requires	^WCONF("P",412)	........... Path incoming ASTM files are store
+  * @requires	^WCONF("P",3) 	........... Number of digits in the request number
+  * @requires	errorfolder	 	........... Path to store error ASTM files
+  *
+  * @example	>do ^READASTM
+ **/
+ 
+	k ^debug
+	
+	// ** configuracion de OMEGA
+	
+	// maximum number of digits for a request
+	set digipet = $p($g(^WCONF("P",3)),"#",2)
+	
+	// folder where ASTM files are saved
+	set folder = $p($g(^WCONF("P",412)),"#",2)
+	
+	// Error folder: store .pet files that failed to create a record in Omega
+	set errorfolder = "C:\IN\errors"
+ 
+	// ** leer archivos de folder
+	set filesrs = ##class(%Library.ResultSet).%New("%Library.File:FileSet")
+	do filesrs.Execute(folder,"*.pet")
+	
+	while(filesrs.Next())
+	{
+      set filefullpath = filesrs.Get("Name")
+ 
+ 	  // file name
+ 	  set filename = ##class(%File).GetFilename(filefullpath)
+ 	  
+      set astm = ##class(OMGMAP.ParseASTM).%New()
+      
+      // parse ASTM file
+      do astm.readFile(filefullpath)
+      
+      // log warnings and errors
+      set errorflag = ""
+      if (astm.isASTM '= 1) 					{ do ##class(OMGMAP.Log).logEvent(10,3,filefullpath)  set errorflag = 1 }
+ 	  if ($length(astm.requestno) > digipet) 	{ do ##class(OMGMAP.Log).logEvent(200,3,astm.recordP) set errorflag = 1 }
+ 	  if (astm.requestno = "") 					{ do ##class(OMGMAP.Log).logEvent(150,3,astm.recordP) set errorflag = 1 }
+ 	 		  
+ 	  if (errorflag = 1)
+ 	  {
+	 	  // new path of the astm file
+	 	  set errorfile = errorfolder_"/"_filename
+	 	  
+	 	  // copy invalid file to error folder
+	 	  do ##class(%File).CopyFile(filefullpath,errorfile)
+	 	  
+	 	  // delete invalid file
+		  do ##class(%File).Delete(filefullpath)	  
+ 	  }
+ 	  
+ 	  // procesar si es archivo ASTM
+      if (astm.isASTM = 1)&($length(astm.requestno) < digipet) & (astm.requestno '= "")
+      {
+		write "Peticion: "_astm.requestno,!
+		/*write "No. Historia: "_astm.patientid,!
+		write "Nombre Completo: "_astm.lastname_", "_astm.firstname,!
+		write "Fecha y hora: "_astm.requestdatetime,!
+		write "Fecha: "_astm.requestdate,!
+		write "Hora: "_astm.requesttime,!
+		write "Sexo: "_astm.sex,!
+		write "Fecha Nac.: "_astm.dob,!
+		write "Priority: "_astm.priority,!
+		write "Origin: "_astm.origin,!
+		write "Med.Service: "_astm.medicalservice,!
+		write "Pat. Type: "_astm.patienttype,!
+		
+		set counter = $order(astm.tests(""))
+		while counter '=""
+		{	      
+			write "..."_astm.tests(counter,"testcode")_"("_astm.tests(counter,"action")_")",!
+		
+			set counter = $order(astm.fieldsO(counter))
+		}*/
+		write "-----------------------------------------",!
+      	
+      	// **********************************************
+      	// * Save to OMEGA 
+      	// **********************************************
+      	
+		// save patient
+		set ret = $$savePatient(astm.requestno,astm.patientid,astm.fullname,astm.dob,astm.sex,astm.medicalservice,astm.host,astm.motive,astm.dx,astm.requestdatetime,astm.priority,astm.origin,astm.patienttype,astm.doctor)
+			      	
+		// save request
+		set ret = $$saveRequest(astm.requestno,astm.requestdate,astm.patientid,astm.doctor,astm.medicalservice,astm.origin,astm.dx,astm.observation,astm.destination,astm.bed,astm.priority,astm.motive,astm.patienttype,astm.episode,astm.requesttime)
+					
+		// save tests
+		set counter = $order(astm.tests(""))		
+		while counter '=""
+		{
+			set testcode = astm.tests(counter,"testcode")
+			set action = astm.tests(counter,"action")
+			
+			do saveTest(astm.requestno,testcode,action,astm.requestdate)      	     	
+			set counter = $order(astm.tests(counter))		
+		}
+		
+		// delete processed file
+		do ##class(%File).Delete(filefullpath)
+					
+      }
+      
+      // terminate object
+      k astm
+	}
+	quit
+	
+	
+saveRequest(requestno,requestdate,patientid,doctor,medicalservice,origin,dx,observation,destination,bed,priority,motive,patienttype,episode,requesttime)
+{
+	set user = "~omega~"
+	set data=requestdate_"#"_patientid_"#"_doctor_"#"_medicalservice_"#"_origin_"#"_dx_"#"_observation_"#"_destination_"#"_bed_"##"_priority_"#"_motive_"#"_patienttype_"#"_episode_"#"_requesttime_"#######"
+ 
+	// $$Pet^WINALTA1(user,pet,DatPet,"","","","",1)	(Urgente)
+	// $$Pet^WINALTA1(user,pet,DatPet) (Rutina)
+	set ^debug($h,"petdata") = data
+	set ret = $$Pet^WINALTA1(user,requestno,data)
+	quit ret
+}
+ 
+savePatient(requestno,patientid,fullname,dob,sex,medicalservice,host,motive,dx,requestdate,priority,origin,patienttype,doctor)
+{
+	set user = "~omega~"
+ 
+	// P|1|77764|84-67-87|^12345678|OBAMA^BARAK^FERNANDEZ||14980101|M|||||10000||||||||0101898|1010|20121004141922^|R|12||A|||||191|||
+ 
+	// build ASTM P record for Omega
+	set astmp = "P|1|"_requestno_"|"_patientid_"|^12345678|"_fullname_"||"_dob_"|M|||||"_motive_"||||||||"_dx_"|"_medicalservice_"|"_requestdate_"|"_priority_"|"_origin_"||"_patienttype_"|||||"_doctor_"|||"
+	
+	set ^debug($h,"patdata") = astmp
+	
+	s ret=$$GrabaPac^WINIES2(user,astmp,host,medicalservice,"")
+	
+	quit ret	
+}
+ 
+saveTest(requestno,testcode,action,requestdate)
+{
+	set user = "~omega~"
+	set year = $extract(requestdate,1,4)
+	
+	
+	if ((action = "A") || (action = "N") || (action = ""))
+	{
+		set ^debug($h,"testdata")=testcode_"#"_action_"#"_requestno_"#"_requestdate
+		// alta a la prueba si no es funcional
+		
+		if (testcode '= "")
+		{
+		 	quit $$altaCodi^WINALTA(user,requestno,testcode,1)							
+		}
+		else
+		{
+			quit ""
+		}
+	}
+ 
+	if (action = "C")
+	{
+		// dar de baja a la prueba
+		quit $$baixaCod^WINALTA(user,requestno,testcode,1,year)
+	}
+}
+]]></Routine>
+</Export>

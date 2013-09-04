@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="21" zv="Cache for Windows (x86-32) 2007.1.3 (Build 607U)" ts="2013-09-04 17:17:19">
+<Class name="OMGMAP.CtrlConf">
+<Description>
+</Description>
+<Super>%CSP.Page</Super>
+<TimeCreated>62922,38679.192736</TimeCreated>
+
+<Method name="OnPreHTTP">
+<ClassMethod>1</ClassMethod>
+<ReturnType>%Boolean</ReturnType>
+<Implementation><![CDATA[
+    set %response.ContentType = "application/json"
+    set %response.CharSet = "utf-8"
+    set %response.Expires = 0
+    Quit 1
+]]></Implementation>
+</Method>
+
+<Method name="OnPage">
+<ClassMethod>1</ClassMethod>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set method = %request.Method
+	
+	k ^cspdebug
+	
+	if (method = "GET")
+	{
+		write ##class(OMGMAP.CtrlConf).Get()		
+	}
+	
+	//set ^cspdebug(1) = %request.Data("model",1)
+	
+	if (method = "POST")
+	{
+		// get id from URL
+		set url = %request.CgiEnvs("PATH_TRANSLATED")
+		set id = $piece(url,"/",$length(url,"/"))
+		
+		if ($data(%request.Data("_method",1)))
+		{
+			if (%request.Data("_method",1) = "PUT")
+			{
+				// do PUT
+				write ##class(OMGMAP.CtrlConf).Post(id)	
+			}
+			
+			if (%request.Data("_method",1) = "DELETE")
+			{
+				// do DELETE
+				write ##class(OMGMAP.CtrlConf).Delete(id)				
+			}				
+		}
+		else
+		{
+			// do POST
+			do ##class(OMGMAP.CtrlConf).Post()
+		}
+	}
+
+	Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="parseJSON">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>json:%String</FormalSpec>
+<ReturnType>%ArrayOfDataTypes</ReturnType>
+<Implementation><![CDATA[
+	// @desc: 		parsing de objeto JSON a array
+	// @input:		json 	........ %string en formato JSON
+	// @output:		array	........ array con datos extraidos de cadena JSON
+		
+	set str = $tr(json,"{}")
+	set str = $tr(str, $char(34))
+	
+	set list = $lfs(str, ",")
+
+	SET ptr=0,count=0,array=""
+	
+	Set arr=##class(%ArrayOfDataTypes).%New()
+
+	WHILE $LISTNEXT(list,ptr,value) 
+	{
+		do arr.SetAt($p(value,":",2),$p(value,":",1))
+	}
+	
+	q arr
+]]></Implementation>
+</Method>
+
+<Method name="Post">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>id:%String</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	// get json object
+	set json = %request.Data("model",1)
+	
+	set array = ##class(OMGMAP.CtrlConf).parseJSON(json)
+	
+	// set variables
+	set wstests = $tr(array.GetAt("ws_tests"),";",":")
+	set wsservmed = $tr(array.GetAt("ws_servmed"),";",":")
+	set wsorigin = $tr(array.GetAt("ws_origin"),";",":")
+	set wspattype = $tr(array.GetAt("ws_pattype"),";",":")
+	
+	set ^OMGMAP.Conf("ws_tests") = wstests
+	set ^OMGMAP.Conf("ws_servmed") = wsservmed
+	set ^OMGMAP.Conf("ws_origin") = wsorigin
+	set ^OMGMAP.Conf("ws_pattype") = wspattype
+	
+	quit "{}"
+]]></Implementation>
+</Method>
+
+<Method name="Delete">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>id:%String</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	// Delete method	
+	k ^OMGMAP.Conf(id)
+	
+	quit "{}"
+]]></Implementation>
+</Method>
+
+<Method name="Get">
+<ClassMethod>1</ClassMethod>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	// init
+	set wstests = ""
+	set wsservmed = ""
+	set wsorigin = ""
+	set wspattype = ""
+	
+	// get variables
+	if ($d(^OMGMAP.Conf("ws_tests"))) 	{ set wstests = ^OMGMAP.Conf("ws_tests") }
+	if ($d(^OMGMAP.Conf("ws_servmed"))) { set wsservmed = ^OMGMAP.Conf("ws_servmed") }
+	if ($d(^OMGMAP.Conf("ws_origin"))) 	{ set wsorigin = ^OMGMAP.Conf("ws_origin") }
+	if ($d(^OMGMAP.Conf("ws_pattype"))) { set wspattype = ^OMGMAP.Conf("ws_pattype") }
+
+	set json = ""
+
+	// open order object
+	set json = json_"{"
+	
+	set json = json_$char(34)_"id"_$char(34)_":"_$char(34)_"1"_$char(34)_","	
+	set json = json_$char(34)_"ws_tests"_$char(34)_":"_$char(34)_wstests_$char(34)_","
+	set json = json_$char(34)_"ws_servmed"_$char(34)_":"_$char(34)_wsservmed_$char(34)_","
+	set json = json_$char(34)_"ws_origin"_$char(34)_":"_$char(34)_wsorigin_$char(34)_","
+	set json = json_$char(34)_"ws_pattype"_$char(34)_":"_$char(34)_wspattype_$char(34)
+		
+	// close order object
+	set json = json_"},"
+	
+	set count = 1
+	
+	// remove last comma (,)	
+	if (count > 1)
+	{
+		set json = "["_$zstrip(json,">",",")_"]"
+	}
+	else
+	{
+		if (count = 0)
+		{
+			set json = "[]"
+		}
+		else
+		{
+			set json = $zstrip(json,">",",")
+		}		
+	}
+	quit json
+]]></Implementation>
+</Method>
+</Class>
+</Export>

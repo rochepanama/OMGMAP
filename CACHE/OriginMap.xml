@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="21" zv="Cache for Windows (x86-32) 2007.1.3 (Build 607U)" ts="2013-09-04 17:17:51">
+<Class name="OMGMAP.OriginMap">
+<Description>
+</Description>
+<Super>%Persistent,%XML.Adaptor</Super>
+<TimeCreated>62926,76939.252583</TimeCreated>
+
+<Property name="omgcode">
+<Type>%String</Type>
+<Required>1</Required>
+</Property>
+
+<Property name="extcode">
+<Type>%String</Type>
+<Required>1</Required>
+</Property>
+
+<Index name="omgcodeIndex">
+<IdKey>1</IdKey>
+<Properties>omgcode</Properties>
+<Unique>1</Unique>
+</Index>
+
+<Index name="extcodeIndex">
+<Properties>extcode</Properties>
+<Unique>1</Unique>
+</Index>
+
+<Method name="getOmgCode">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>extcode:%String</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	set omgcode = ""
+	
+	Set result=##class(%ResultSet).%New("%DynamicQuery:SQL")
+	
+	Set sc=result.Prepare("SELECT * FROM OMGMAP.OriginMap WHERE extcode = ?")
+	
+	If $$$ISERR(sc) Do DisplayError^%apiOBJ(sc) Quit
+	
+	Set sc=result.Execute(extcode) If $$$ISERR(sc) Do DisplayError^%apiOBJ(sc) Quit
+	
+	While result.Next(.sc) {
+		If $$$ISERR(sc) Quit
+		set omgcode = result.Data("omgcode")
+	}
+	
+	quit omgcode
+]]></Implementation>
+</Method>
+
+<Method name="getExtCode">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>omgcode:%String</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	set extcode = ""
+	
+	Set result=##class(%ResultSet).%New("%DynamicQuery:SQL")
+	
+	Set sc=result.Prepare("SELECT * FROM OMGMAP.OriginMap WHERE omgcode = ?")
+	
+	If $$$ISERR(sc) Do DisplayError^%apiOBJ(sc) Quit
+	
+	Set sc=result.Execute(omgcode) If $$$ISERR(sc) Do DisplayError^%apiOBJ(sc) Quit
+	
+	While result.Next(.sc) {
+		If $$$ISERR(sc) Quit
+		set extcode = result.Data("extcode")
+	}
+	
+	quit extcode
+]]></Implementation>
+</Method>
+
+<Storage name="Default">
+<Type>%Library.CacheStorage</Type>
+<DataLocation>^OMGMAP.OriginMapD</DataLocation>
+<DefaultData>OriginMapDefaultData</DefaultData>
+<IdLocation>^OMGMAP.OriginMapD</IdLocation>
+<IndexLocation>^OMGMAP.OriginMapI</IndexLocation>
+<StreamLocation>^OMGMAP.OriginMapS</StreamLocation>
+<Data name="OriginMapDefaultData">
+<Structure>listnode</Structure>
+<Subscript/>
+<Value name="1">
+<Value>%%CLASSNAME</Value>
+</Value>
+<Value name="2">
+<Value>extcode</Value>
+</Value>
+<Value name="3">
+<Value>omgcode</Value>
+</Value>
+</Data>
+</Storage>
+</Class>
+</Export>

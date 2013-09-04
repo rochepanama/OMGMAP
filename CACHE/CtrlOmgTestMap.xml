@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="21" zv="Cache for Windows (x86-32) 2007.1.3 (Build 607U)" ts="2013-09-04 17:17:42">
+<Class name="OMGMAP.CtrlOmgTestMap">
+<Description>
+</Description>
+<Super>%CSP.Page</Super>
+<TimeCreated>62919,7814.169737</TimeCreated>
+
+<Method name="OnPreHTTP">
+<ClassMethod>1</ClassMethod>
+<ReturnType>%Boolean</ReturnType>
+<Implementation><![CDATA[
+    set %response.ContentType = "application/json"
+    set %response.CharSet = "utf-8"
+    set %response.Expires = 0
+    Quit 1
+]]></Implementation>
+</Method>
+
+<Method name="OnPage">
+<ClassMethod>1</ClassMethod>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+	set method = %request.Method
+	
+	k ^cspdebug
+	
+	if (method = "GET")
+	{
+		write ##class(OMGMAP.CtrlOmgTestMap).Get()		
+	}
+	
+	if (method = "POST")
+	{
+		// get id from URL
+		set url = %request.CgiEnvs("PATH_TRANSLATED")
+		set id = $piece(url,"/",$length(url,"/"))
+		
+		if ($data(%request.Data("_method",1)))
+		{
+			if (%request.Data("_method",1) = "PUT")
+			{
+				// do PUT
+				write ##class(OMGMAP.CtrlOmgTestMap).Post(id)	
+			}
+			
+			if (%request.Data("_method",1) = "DELETE")
+			{
+				// do DELETE
+				write ##class(OMGMAP.CtrlOmgTestMap).Delete(id)				
+			}				
+		}
+		else
+		{
+			// do POST
+			do ##class(OMGMAP.CtrlOmgTestMap).Post()
+		}
+	}
+
+	Quit $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="parseJSON">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>json:%String</FormalSpec>
+<ReturnType>%ArrayOfDataTypes</ReturnType>
+<Implementation><![CDATA[
+	// @desc: 		parsing de objeto JSON a array
+	// @input:		json 	........ %string en formato JSON
+	// @output:		array	........ array con datos extraidos de cadena JSON
+		
+	set str = $tr(json,"{}")
+	set str = $tr(str, $char(34))
+	
+	set list = $lfs(str, ",")
+
+	SET ptr=0,count=0,array=""
+	
+	Set arr=##class(%ArrayOfDataTypes).%New()
+
+	WHILE $LISTNEXT(list,ptr,value) 
+	{
+		//set arr($p(value,":",1))=$p(value,":",2)
+		do arr.SetAt($p(value,":",2),$p(value,":",1))
+	}
+	
+	q arr
+]]></Implementation>
+</Method>
+
+<Method name="Post">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>id:%String</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	// get json object
+	set json = %request.Data("model",1)
+	
+	set array = ##class(OMGMAP.CtrlOmgTestMap).parseJSON(json)
+	
+	// set variables
+	set codigo = array.GetAt("CODIGO")
+	set omgcode = array.GetAt("omgcode")
+	set extcode = array.GetAt("extcode")
+	
+	Set result=##class(%ResultSet).%New()
+	
+	// INSERT vs UPDATE: if the "omgcode" is set, perform and UPDATE. Otherwise
+	// perform an INSERT.
+	
+	if (omgcode = "")
+	{
+		set sql = "INSERT INTO OMGMAP.TestMap (omgcode, extcode) VALUES ('"_codigo_"','"_extcode_"')"
+	}
+	else
+	{
+		set sql = "UPDATE OMGMAP.TestMap SET extcode = '"_extcode_"' WHERE omgcode = '"_omgcode_"'"
+	}
+	
+	set ^cspdebug($h) = sql
+	
+	Set sc=result.Prepare(sql)
+	If $$$ISERR(sc) Do DisplayError^%apiOBJ(sc) Quit
+	
+	Set sc=result.Execute(1000000) If $$$ISERR(sc) Do DisplayError^%apiOBJ(sc) Quit
+	quit "{"_$char(34)_"extcode"_$char(34)_":"_$char(34)_extcode_$char(34)_"}"
+]]></Implementation>
+</Method>
+
+<Method name="Delete">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>id:%String</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	// Delete method	
+	Set result=##class(%ResultSet).%New()
+	
+	// final SQL statment
+	set sql = "DELETE FROM OMGMAP.TestMap WHERE omgcode = '"_id_"'"
+	
+	set ^cspdebug($h) = sql
+	
+	Set sc=result.Prepare(sql)
+	If $$$ISERR(sc) Do DisplayError^%apiOBJ(sc) Quit
+	
+	Set sc=result.Execute(1000000) If $$$ISERR(sc) Do DisplayError^%apiOBJ(sc) Quit
+	
+	quit "{}"
+]]></Implementation>
+</Method>
+
+<Method name="Get">
+<ClassMethod>1</ClassMethod>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	// init
+	
+	Set result=##class(%ResultSet).%New()
+	
+	// final SQL statment
+	set sql = "SELECT * FROM SYSTEM.OMEGA_PRUEBAS_CABECERA LEFT JOIN OMGMAP.TestMap ON omgcode=CODIGO"
+	
+	set ^cspdebug($h) = sql
+	
+	Set sc=result.Prepare(sql)
+	If $$$ISERR(sc) Do DisplayError^%apiOBJ(sc) Quit
+	
+	Set sc=result.Execute(1000000) If $$$ISERR(sc) Do DisplayError^%apiOBJ(sc) Quit
+	
+	set count = 0
+	
+	// build
+	while result.Next(.sc)
+	{	
+		set count = count + 1		
+		
+		set id = count
+		
+		// order info
+		set record(id,"CODIGO") = result.Data("CODIGO")
+		set record(id,"ABREVIATURA") = result.Data("ABREVIATURA")
+		set record(id,"COD_SECCION") = result.Data("COD_SECCION")
+		set record(id,"DESCRIPCION") = result.Data("DESCRIPCION")
+		set record(id,"COD_MUESTRA") = result.Data("COD_MUESTRA")
+		set record(id,"UNID_CONVENCIONALES") = result.Data("UNID_CONVENCIONALES")
+		set record(id,"DESCRIPCION_SECCIONES") = result.Data("DESCRIPCION_SECCIONES")
+		set record(id,"extcode") = result.Data("extcode")
+		set record(id,"omgcode") = result.Data("omgcode")
+	}
+	
+	set rowid = $order(record(""))
+		
+	set json = ""
+	
+	while rowid '= ""
+	{
+		// open order object
+		set json = json_"{"
+		
+		set json = json_$char(34)_"id"_$char(34)_":"_$char(34)_record(rowid,"CODIGO")_$char(34)_","	
+		set json = json_$char(34)_"CODIGO"_$char(34)_":"_$char(34)_record(rowid,"CODIGO")_$char(34)_","
+		set json = json_$char(34)_"extcode"_$char(34)_":"_$char(34)_record(rowid,"extcode")_$char(34)_","
+		set json = json_$char(34)_"omgcode"_$char(34)_":"_$char(34)_record(rowid,"omgcode")_$char(34)_","
+		set json = json_$char(34)_"ABREVIATURA"_$char(34)_":"_$char(34)_record(rowid,"ABREVIATURA")_$char(34)_","
+		set json = json_$char(34)_"COD_SECCION"_$char(34)_":"_$char(34)_record(rowid,"COD_SECCION")_$char(34)_","
+		set json = json_$char(34)_"DESCRIPCION"_$char(34)_":"_$char(34)_record(rowid,"DESCRIPCION")_$char(34)_","
+		set json = json_$char(34)_"COD_MUESTRA"_$char(34)_":"_$char(34)_record(rowid,"COD_MUESTRA")_$char(34)_","
+		set json = json_$char(34)_"UNID_CONVENCIONALES"_$char(34)_":"_$char(34)_record(rowid,"UNID_CONVENCIONALES")_$char(34)_","
+		set json = json_$char(34)_"DESCRIPCION_SECCIONES"_$char(34)_":"_$char(34)_record(rowid,"DESCRIPCION_SECCIONES")_$char(34)
+			
+		// close order object
+		set json = json_"},"
+		
+		set rowid = $order(record(rowid))
+	}
+
+	// remove last comma (,)	
+	if (count > 1)
+	{
+		set json = "["_$zstrip(json,">",",")_"]"
+	}
+	else
+	{
+		if (count = 0)
+		{
+			set json = "[]"
+		}
+		else
+		{
+			set json = $zstrip(json,">",",")
+		}		
+	}
+	quit json
+]]></Implementation>
+</Method>
+</Class>
+</Export>

@@ -1,0 +1,457 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="21" zv="Cache for Windows (x86-32) 2007.1.3 (Build 607U)" ts="2013-09-04 17:17:55">
+<Class name="OMGMAP.ParseASTM">
+<Description>
+</Description>
+<Super>%RegisteredObject,%XML.Adaptor</Super>
+<TimeCreated>62938,34272.624866</TimeCreated>
+
+<Property name="fieldsH">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Property name="fieldsO">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Property name="fieldsP">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Property name="fieldsQ">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Property name="fieldsL">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<UDLText name="T">
+<Content><![CDATA[
+// properties to store each ASTM records (H,P,O,L)
+
+]]></Content>
+</UDLText>
+
+<Property name="recordP">
+<Type>%String</Type>
+</Property>
+
+<Property name="recordO">
+<Type>%String</Type>
+</Property>
+
+<Property name="recordH">
+<Type>%String</Type>
+</Property>
+
+<Property name="recordL">
+<Type>%String</Type>
+</Property>
+
+<Property name="isASTM">
+<Type>%Boolean</Type>
+</Property>
+
+<UDLText name="T">
+<Content><![CDATA[
+// ASTM properties
+
+]]></Content>
+</UDLText>
+
+<Property name="host">
+<Type>%String</Type>
+</Property>
+
+<Property name="requestno">
+<Type>%String</Type>
+</Property>
+
+<Property name="requestdatetime">
+<Type>%String</Type>
+</Property>
+
+<Property name="requestdate">
+<Type>%String</Type>
+</Property>
+
+<Property name="requesttime">
+<Type>%String</Type>
+</Property>
+
+<Property name="priority">
+<Type>%String</Type>
+</Property>
+
+<Property name="dob">
+<Type>%String</Type>
+</Property>
+
+<Property name="sex">
+<Type>%String</Type>
+</Property>
+
+<Property name="patientid">
+<Type>%String</Type>
+</Property>
+
+<Property name="fullname">
+<Type>%String</Type>
+</Property>
+
+<Property name="firstname">
+<Type>%String</Type>
+</Property>
+
+<Property name="lastname">
+<Type>%String</Type>
+</Property>
+
+<Property name="middlename">
+<Type>%String</Type>
+</Property>
+
+<Property name="medicalservice">
+<Type>%String</Type>
+</Property>
+
+<Property name="origin">
+<Type>%String</Type>
+</Property>
+
+<Property name="patienttype">
+<Type>%String</Type>
+</Property>
+
+<Property name="destination">
+<Type>%String</Type>
+</Property>
+
+<Property name="observation">
+<Type>%String</Type>
+</Property>
+
+<Property name="episode">
+<Type>%String</Type>
+</Property>
+
+<Property name="doctor">
+<Type>%String</Type>
+</Property>
+
+<Property name="dx">
+<Type>%String</Type>
+</Property>
+
+<Property name="bed">
+<Type>%String</Type>
+</Property>
+
+<Property name="motive">
+<Type>%String</Type>
+</Property>
+
+<Property name="tests">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Method name="getTimeStamp">
+<Implementation><![CDATA[
+	// @desc: 		Get current timestamp in YYYYMMDDHHMMSS format
+	
+	set datetime = $zdatetime($h,8)
+	
+	quit $tr(datetime,"/: ")
+]]></Implementation>
+</Method>
+
+<Method name="readFile">
+<FormalSpec>file:%String</FormalSpec>
+<Implementation><![CDATA[
+	Set stream=##class(%FileCharacterStream).%New()
+	Set stream.Filename = file
+
+	// read counter
+	set i = 1
+	
+	While 'stream.AtEnd 
+	{
+		Set line = stream.ReadLine()
+		
+		// check if file contains ASTM
+		if (i = 1)	{	set ..isASTM = ..checkASTM(line)		}
+		
+		// if file is ASTM, process it
+		if (..isASTM)
+		{
+			// get the record type (H,P,O,R,Q,L)
+			set linetype = $piece(line,"|")
+			set fieldcount = $length(line,"|")
+			
+			//** parse lines and build arrays
+
+			// H record
+			if (linetype = "H")	{	do ..parseH(line,fieldcount)		}
+	
+			// P record
+			if (linetype = "P")	{	do ..parseP(line,fieldcount)		}
+			
+			// O record
+			if (linetype = "O")	{	do ..parseO(line,fieldcount)		}
+			
+			// L record
+			if (linetype = "L")	{	do ..parseL(line,fieldcount)		}
+			
+		}
+		
+		set i = i + 1				
+	}
+]]></Implementation>
+</Method>
+
+<Method name="checkASTM">
+<FormalSpec>line:%String</FormalSpec>
+<ReturnType>%Boolean</ReturnType>
+<Implementation><![CDATA[
+	// @params: 	line		.........	currently read line of the file
+	//
+	// @output: 	1	......	file is ASTM
+	// 				0 	...... 	file is not ASTM
+	//
+	// @desc: 		Checks the first line read to see if file is ASTM. First character
+	// 				must be the letter "H" 
+	
+	set rectype = $piece(line,"|",1)
+
+	if (rectype = "H")	{ 	quit 1 	}
+	else 				{	quit 0 	}
+]]></Implementation>
+</Method>
+
+<Method name="parseH">
+<FormalSpec>line:%String,fieldcount:%Integer</FormalSpec>
+<Implementation><![CDATA[
+	// @params: 	line		.........	currently read line of the file
+	// 				fieldcount	.........	number of "|" (pipe) characters in the line
+		
+	set i = 1
+	
+	// save entire line
+	set ..recordH = line
+	
+	while (i <= fieldcount)
+	{
+		set fieldvalue = $piece(line,"|",i)
+		
+		set ..fieldsH(i) = fieldvalue
+		
+		set i = i + 1
+	}
+	
+	do ..setHeaderData()
+]]></Implementation>
+</Method>
+
+<Method name="parseP">
+<FormalSpec>line:%String,fieldcount:%Integer</FormalSpec>
+<Implementation><![CDATA[
+	// @params: 	line		.........	currently read line of the file
+	// 				fieldcount	.........	number of "|" (pipe) characters in the line
+		
+	set i = 1
+	
+	// save entire line
+	set ..recordP = line
+	
+	while (i <= fieldcount)
+	{
+		set fieldvalue = $piece(line,"|",i)
+		
+		set ..fieldsP(i) = fieldvalue
+		
+		set i = i + 1
+	}
+	
+	// set patient demographics
+	do ..setPatientDemographics()
+]]></Implementation>
+</Method>
+
+<Method name="parseO">
+<FormalSpec>line:%String,fieldcount:%Integer</FormalSpec>
+<Implementation><![CDATA[
+	// @params: 	line		.........	currently read line of the file
+	// 				fieldcount	.........	number of "|" (pipe) characters in the line
+	
+	// init counter
+	set i = 1
+	
+	// save entire line
+	set ..recordO = line
+	
+	// get field counter
+	set counter = $piece(line,"|",2)
+	
+	// do until fieldcount reached
+	while (i <= fieldcount)
+	{
+		// parse each field
+		set fieldvalue = $piece(line,"|",i)
+		
+		// set O field
+		set ..fieldsO(counter,i) = fieldvalue
+		
+		set i = i + 1
+	}
+	
+	// set test data
+	if (fieldvalue '="")
+	{
+		do ..setTests(line,counter)
+	}
+]]></Implementation>
+</Method>
+
+<Method name="parseL">
+<FormalSpec>line:%String,fieldcount:%Integer</FormalSpec>
+<Implementation><![CDATA[
+	// @params: 	line		.........	currently read line of the file
+	// 				fieldcount	.........	number of "|" (pipe) characters in the line
+	
+	// initialize counter
+	set i = 1
+	
+	// save entire line
+	set ..recordL = line
+	
+	// do until fieldcount reached
+	while (i <= fieldcount)
+	{
+		// parse each field
+		set fieldvalue = $piece(line,"|",i)
+		
+		// set the property
+		set ..fieldsL(i) = fieldvalue
+		
+		// increment counter
+		set i = i + 1
+	}
+]]></Implementation>
+</Method>
+
+<UDLText name="T">
+<Content><![CDATA[
+// -----------------------------------
+
+]]></Content>
+</UDLText>
+
+<Method name="setHeaderData">
+<Implementation><![CDATA[
+	// set host id
+	set ..host = ..fieldsH(5)
+]]></Implementation>
+</Method>
+
+<Method name="setPatientDemographics">
+<Implementation><![CDATA[
+	// required properties
+	set ..requestno = ..fieldsP(3)		
+	set ..patientid =..fieldsP(4)
+	set ..dob = ..fieldsP(8)
+	set ..sex = ..setSex(..fieldsP(9))
+	set ..priority = ..fieldsP(25)
+	
+	// set the following properties according to mappings
+	set ..origin = ##class(OMGMAP.OriginMap).getOmgCode(..fieldsP(26))
+	set ..patienttype = ##class(OMGMAP.PatTypeMap).getOmgCode(..fieldsP(28))
+	set ..medicalservice = ##class(OMGMAP.MedServMap).getOmgCode(..fieldsP(23))
+	
+	// Note: set to an empty field on purpose since it will not be used for this customer
+	set ..motive = ..fieldsP(14)
+	set ..dx = ..fieldsP(22)
+	set ..bed = ..fieldsP(11)
+	set ..episode = ..fieldsP(11)
+	set ..observation = ..fieldsP(11)
+	set ..doctor = ..fieldsP(33)
+	
+	// ** Request Date
+	
+	// date & time
+	set ..requestdatetime = ..fieldsP(24)
+	do ..setRequestDateTime(..fieldsP(24))
+	
+	// ** Names
+	set ..fullname = ..fieldsP(6)
+	do ..setNames(..fieldsP(6))
+	
+	// ** log errors and warnings
+	if (..medicalservice = "") 	{ do ##class(OMGMAP.Log).logEvent(130,2,..recordP) }
+	if (..patienttype = "") 	{ do ##class(OMGMAP.Log).logEvent(120,2,..recordP) }
+	if (..origin = "") 			{ do ##class(OMGMAP.Log).logEvent(110,2,..recordP) }
+]]></Implementation>
+</Method>
+
+<Method name="setNames">
+<FormalSpec>rawname</FormalSpec>
+<Implementation><![CDATA[
+	// @params: 	rawname	.................	name field extracted from ASTM (including composite delimeters)
+	// @output: 	setting of firstname, middlename, and lastname properties
+	
+	set ..firstname = $piece(rawname,"^",1)
+	set ..lastname = $piece(rawname,"^",3)
+	set ..middlename = $piece(rawname,"^",2)
+]]></Implementation>
+</Method>
+
+<Method name="setRequestDateTime">
+<FormalSpec>datetime</FormalSpec>
+<Implementation><![CDATA[
+	// @params: 	datetime	.........	date & time field from ASTM file
+	// @output: 	setting of request date properties: requestdate and requesttime (including ":" separators)
+	
+	// date (first 8 digits)
+	set ..requestdate = $extract(datetime,1,8)
+	
+	// time (last 6 digits in pairs separated by a ":")
+	set ..requesttime = $extract(datetime,9,10)_":"_$extract(datetime,11,12)_":"_$extract(datetime,13,14)
+]]></Implementation>
+</Method>
+
+<Method name="setTests">
+<FormalSpec>line:%String,counter:%Integer</FormalSpec>
+<Implementation><![CDATA[
+	// @params: 	line 	........	O line text
+	
+	set actioncode = $piece(line,"|",11)
+	set testfield = $piece(line,"|",5)
+	
+	set testcode = $piece(testfield,"^",4)
+	
+	// set testcode property according to mapping
+	set finaltestcode = ##class(OMGMAP.TestMap).getOmgCode(testcode)
+	set ..tests(counter,"action") = actioncode
+	set ..tests(counter,"testcode") = finaltestcode
+	
+	// log errors and warnings
+	if (finaltestcode = "") { do ##class(OMGMAP.Log).logEvent(100,3,line) }
+]]></Implementation>
+</Method>
+
+<Method name="setSex">
+<FormalSpec>sex</FormalSpec>
+<Implementation><![CDATA[
+	// @params: 	sex		........	sex code received from external system
+	// @output: 	Omega compatible sex code:	0 - General
+	// 											1 - Man
+	// 											2 - Woman
+	
+	//quit $select(sex="M":1,sex="F":2,sex="":0)
+	
+	// no change
+	quit sex
+]]></Implementation>
+</Method>
+</Class>
+</Export>
