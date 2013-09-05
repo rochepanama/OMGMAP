@@ -13,6 +13,7 @@
   * @requires	^WCONF("P",3) 	........... Number of digits in the request number
   *
   * @example	>do ^WRITEASTM
+  * ESTO ES UN CAMBIO
  **/
  
 WRITEASTM
