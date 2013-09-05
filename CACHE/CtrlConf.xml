@@ -30,7 +30,7 @@
 		write ##class(OMGMAP.CtrlConf).Get()		
 	}
 	
-	//set ^cspdebug(1) = %request.Data("model",1)
+	//set ^cspdebug(1) = %request.Data("model",1)xxxxx
 	
 	if (method = "POST")
 	{
