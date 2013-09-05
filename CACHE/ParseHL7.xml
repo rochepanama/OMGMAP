@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Export generator="Cache" version="21" zv="Cache for Windows (x86-32) 2007.1.3 (Build 607U)" ts="2013-09-04 17:17:58">
-<Class name="OMGMAP.ParseHL7">
+<Export generator="Cache" version="21" zv="Cache for Windows (x86-32) 2007.1.3 (Build 607U)" ts="2013-09-05 08:24:59">
+<Class name="OMGMAP.InHL7">
 <Description>
 </Description>
 <Super>%RegisteredObject,%XML.Adaptor</Super>
-<TimeCreated>62977,60774.370219</TimeCreated>
+<TimeCreated>63061,52946.823351</TimeCreated>
 
 <Property name="fieldsMSH">
 <MultiDimensional>1</MultiDimensional>
@@ -184,6 +184,10 @@
 <MultiDimensional>1</MultiDimensional>
 </Property>
 
+<Property name="detmed">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
 <Method name="checkHL7">
 <FormalSpec>line:%String</FormalSpec>
 <ReturnType>%Boolean</ReturnType>
@@ -243,13 +247,23 @@
 			if (linetype = "MSH")	{	do ..parseMSH(line,fieldcount)		}
 	
 			// P record
-			if (linetype = "PID")	{	do ..parsePID(line,fieldcount)		}
+			if (linetype = "PID")	{	do ..parsePID(line,fieldcount)      }
+			
 			
 			// O record
-			if (linetype = "ORC")	{	do ..parseORC(line,fieldcount)		}
+			if (linetype = "ORC")	{	do ..parseORC(line,fieldcount)}
 			
 			// L record
-			if (linetype = "OBR")	{	do ..parseOBR(line,fieldcount)		}
+			if (linetype = "OBR")	{	
+			
+			do ..parseOBR(line,fieldcount)
+			
+			;set ^debug($h,"OBR")=..fieldsOBR(1,17)
+			
+			;set ..doctor =..fieldsOBR(1,17)
+					
+					
+					}
 			
 		}
 		
@@ -285,7 +299,7 @@
 <Method name="setHeaderData">
 <Implementation><![CDATA[
 	// set host id
-	set ..host = ..fieldsMSH(2)
+	set ..host = ..fieldsMSH(3)
 ]]></Implementation>
 </Method>
 
@@ -309,7 +323,7 @@
 		set i = i + 1
 	}
 	
-	// set patient demographics
+	//set patient demographics
 	do ..setPatientDemographics()
 ]]></Implementation>
 </Method>
@@ -331,7 +345,11 @@
 		
 		set ..fieldsORC(i) = fieldvalue
 		
+		;set ^debug($h,"ORC"_i)=fieldvalue
+		
 		set i = i + 1
+		
+		
 	}
 	
 	// set patient demographics
@@ -339,29 +357,104 @@
 ]]></Implementation>
 </Method>
 
+<Method name="parseOBR">
+<FormalSpec>line:%String,fieldcount:%Integer</FormalSpec>
+<Implementation><![CDATA[
+	// @params: 	line		.........	currently read line of the file
+	// 				fieldcount	.........	number of "|" (pipe) characters in the line
+	
+	// init counter
+	set i = 1
+	
+	// save entire line
+	set ..recordOBR = line
+	
+	// get field counter
+	set counter = $piece(line,"|",2)
+	
+	// do until fieldcount reached
+	while (i <= fieldcount)
+	{
+		// control fallback if sequence number is not provided
+		if (counter = "")	{	set counter = i 	}
+		
+		// parse each field
+		set fieldvalue = $piece(line,"|",i)
+		
+		// set OBR field
+		set ..fieldsOBR(counter,i) = fieldvalue
+		
+		set ^debug($h,"OBR"_i_counter)=fieldvalue
+		
+		if (i=3){set pet=fieldvalue} 
+		if (i=2){set id=fieldvalue}
+		
+		if (i=17){
+			set ..doctor =$piece(fieldvalue,"^",2)
+			set data=$data(^LUFAC($piece(fieldvalue,"^",1)))
+			;set ^debug($h,"datosdoctor")=data
+			if (data=1 && id=1){
+				
+				set ^logdata(pet,id)="Doctor "_..doctor_" existe en la global ^LUFACN para id:"_id
+				;do ##class(OMGMAP.logdata).logEventdata(1,1,"Doctor "_..doctor_" existe en la global ^LUFACN")
+			}
+			
+			if (data=0 && id=1) {
+				set ^LUFACN($piece(fieldvalue,"^",2),$piece(fieldvalue,"^",1))=""
+			    set ^LUFAC($piece(fieldvalue,"^",1))=$piece(fieldvalue,"^",2)
+			    set ^logdata(pet,id)="Doctor "_..doctor_" creado en la global ^LUFACN con id:"_id
+				;do ##class(OMGMAP.logdata).logEventdata(1,1,"Doctor "_..doctor_" creado en la global ^LUFACN con id")	
+			}
+		
+			set ^debug($h,"Doctor")=$piece(fieldvalue,"^",1)
+			}
+		
+		set i = i + 1
+	}
+	
+	
+	
+	// set test data
+	if (fieldvalue '="")
+	{
+		set ^debug($h,"countertest")=counter
+		do ..setTests(line,counter)
+		
+	}
+
+
+ do ..setPatientDemographics()
+]]></Implementation>
+</Method>
+
 <Method name="setPatientDemographics">
 <Implementation><![CDATA[
+	
+	
+	
 	// required properties
-	if (($data(..fieldsORC(4))) & (..requestno = "")) 	{ set ..requestno = ..fieldsORC(4)					}	
+	if (($data(..fieldsORC(4))) & (..requestno = "")) 	{ set ..requestno = ..fieldsORC(4)}	
 	if ($data(..fieldsPID(4))) 	{ set ..patientid = $piece(..fieldsPID(4),"^",1) 	}
-	if ($data(..fieldsPID(4)))	{ set ..dob = ..fieldsPID(8)						}
+	if ($data(..fieldsPID(4)))	{ set ..dob = $Extract(..fieldsPID(8),1,8)						}
 	if ($data(..fieldsPID(9)))	{ set ..sex = ..setSex(..fieldsPID(9))				}
 	if ($data(..fieldsOBR(6)))	{ set ..priority = ..fieldsOBR(6)					}
 	
 	
+	
+	
 	// set the following properties according to mappings
-	if ($data(..fieldsORC(16)))	{ set ..origin = ##class(OMGMAP.OriginMap).getOmgCode(..fieldsORC(16))			}
-	if ($data(..fieldsORC(17)))	{ set ..patienttype = ##class(OMGMAP.PatTypeMap).getOmgCode(..fieldsORC(17))	}
-	if ($data(..fieldsORC(18)))	{ set ..medicalservice = ##class(OMGMAP.MedServMap).getOmgCode(..fieldsORC(18))	}
+	if ($data(..fieldsORC(1)))	{ set ..origin = "ori1"} ;##class(OMGMAP.OriginMap).getOmgCode(..fieldsORC(16))			}
+	;if ($data(..fieldsORC(17)))	{ set ..patienttype =""} ;##class(OMGMAP.PatTypeMap).getOmgCode(..fieldsORC(17))	}
+	if ($data(..fieldsORC(1)))	{ set ..medicalservice ="Area" } ;##class(OMGMAP.MedServMap).getOmgCode(..fieldsORC(18))	}
 
 	
 	// Note: set to an empty field on purpose since it will not be used for this customer
-	/*set ..motive = ..fieldsPID(14)
-	set ..dx = ..fieldsPID(22)
-	set ..bed = ..fieldsPID(11)
-	set ..episode = ..fieldsPID(11)
-	set ..observation = ..fieldsPID(11)
-	set ..doctor = ..fieldsPID(33)*/
+	set ..dx = "" ;..fieldsPID(22)
+	;set ..doctor ="" //$piece(..fieldsOBR(17),"^",2)
+	set ..motive = ""
+	set ..bed = ""
+	set ..episode = ""
+	set ..observation = ""
 	
 	// ** Request Date
 	
@@ -394,7 +487,7 @@
 	// @output: 	setting of firstname, middlename, and lastname properties
 	
 	set ..firstname = $piece(rawname,"^",2)
-	set ..lastname = $piece(rawname,"^",1)
+    set ..lastname = $piece(rawname,"^",1)
 	//set ..middlename = $piece(rawname,"^",2)
 ]]></Implementation>
 </Method>
@@ -413,53 +506,15 @@
 ]]></Implementation>
 </Method>
 
-<Method name="parseOBR">
-<FormalSpec>line:%String,fieldcount:%Integer</FormalSpec>
-<Implementation><![CDATA[
-	// @params: 	line		.........	currently read line of the file
-	// 				fieldcount	.........	number of "|" (pipe) characters in the line
-	
-	// init counter
-	set i = 1
-	
-	// save entire line
-	set ..recordOBR = line
-	
-	// get field counter
-	set counter = $piece(line,"|",2)
-	
-	// do until fieldcount reached
-	while (i <= fieldcount)
-	{
-		// control fallback if sequence number is not provided
-		if (counter = "")	{	set counter = i 	}
-		
-		// parse each field
-		set fieldvalue = $piece(line,"|",i)
-		
-		// set OBR field
-		set ..fieldsOBR(counter,i) = fieldvalue
-		
-		set i = i + 1
-	}
-	
-	// set test data
-	if (fieldvalue '="")
-	{
-		do ..setTests(line,counter)
-	}
-]]></Implementation>
-</Method>
-
 <Method name="setTests">
 <FormalSpec>line:%String,counter:%Integer</FormalSpec>
 <Implementation><![CDATA[
 	// @params: 	line 	........	O line text
 	
 	set actioncode= $piece(line,"|",11)
-	set testfield = $piece(line,"|",5)
+	set testcode = $piece(line,"|",5)
 	
-	set testcode = $piece(testfield,"^",4)
+	set ^debug($h,"OmegaCode")=testcode
 	
 	// set testcode property according to mapping
 	set finaltestcode = ##class(OMGMAP.TestMap).getOmgCode(testcode)
@@ -483,6 +538,21 @@
 	
 	// no change
 	quit sex
+]]></Implementation>
+</Method>
+
+<UDLText name="T">
+<Content><![CDATA[
+//line As %String, counter As %Integer
+
+]]></Content>
+</UDLText>
+
+<Method name="errorlog">
+<FormalSpec>code:%Integer,type:%Integer,info:%String</FormalSpec>
+<Implementation><![CDATA[
+	
+	do ##class(OMGMAP.Log).logEvent(code,type,info)
 ]]></Implementation>
 </Method>
 </Class>
