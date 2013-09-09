@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="21" zv="Cache for Windows (x86-32) 2007.1.3 (Build 607U)" ts="2013-09-09 02:21:49">
+<Routine name="WRITEHL7" type="MAC" languagemode="0" timestamp="63074,6523"><![CDATA[
+ /**
+  *	Procedure to write outgoing HL7 files to create requests on Omega. The files
+  * must be named in the following format: 
+  *		requestno.res
+  * 
+  * Where "requestno" is the request number sent to Omega and ".res" is the extension (lowercase)
+  *
+  * @author 	<a href="mailto:ivan.quintero@roche.com">Ivan Quintero</a>
+  * @requires	^WCONF("P",413)	........... Path incoming HL7 files are store
+  * @requires	^WCONF("P",3) 	........... Number of digits in the request number
+  *
+  * @example	>do ^WRITEHL7
+ **/
+ 
+WRITEHL7
+	
+	// loop throug validated requests (^OMGMAP.ReqValidated)
+	
+	set request = $order(^OMGMAP.ReqValidated(""))
+	
+	while request '= ""
+	{
+		write request,!
+		set ret = $$prepToHost(request)
+		
+		if (request '="") 
+		{	
+			//k ^OMGMAP.ReqValidated(request) 
+		}
+		set request = $order(^OMGMAP.ReqValidated(request))		
+	}
+	
+ 
+prepToHost(req)
+{
+	/** Procedure that prepares data to be sent to the HOST. It loops through the 
+	  *
+	  * @params {Integer} req
+	**/
+	
+	// loop through ^LDIA(request)
+	
+	// send action flag (1:send, 2:do not send)
+	set send = 0
+	
+	// loop sections
+	set section = $order(^LDIA(req,""))
+	
+	while section '=""
+	{
+		// loop tests
+		set testcode = $order(^LDIA(req,section,""))
+		
+		while testcode '=""
+		{			
+			// get global value
+			set data = $get(^LDIA(req,section,testcode))
+			
+			// test result
+			set result = $piece(data,"#",1)
+			
+			// result status (1:validated, 2:printed)
+			set status = $piece(data,"#",2)
+			
+			// last sent result, if exists, for this request
+			set sentres = $get(^OMGMAP.ReqValidatedRes(req,testcode))
+			
+			// validate before sending to host
+			if (result '= "") & (status >= 1) & (sentres '= testcode)
+			{
+				// set send flag to send
+				set send = 1
+			}
+			
+			set testcode = $order(^LDIA(req,section,testcode))
+		}
+		
+		set section = $order(^LDIA(req,section))	
+	}
+	
+	if (send = 1)
+	{
+		// send to host
+		set ret = $$sendToHost(req)		
+	}
+	
+	quit 1
+}
+ 
+sendToHost(req)
+{
+	/**
+	 * Method to create HL7 results file
+	 *
+	 * @params 		{Integer} req	........... request number to send to host
+	 *
+	**/
+		
+	// folder where HL7 files are saved
+	//set folder = "c:/test/" 
+	
+	set folder = $p($g(^WCONF("P",413)),"#",2)
+	
+	// setup filepath for HL7 file
+	set filepath = folder_"\"_req_".res"
+	
+	set HL7 = ##class(OMGMAP.WriteHL7).%New()
+	
+	// set required properties to init
+	set HL7.host = "OMEGA"
+	set HL7.requestno = req
+	
+	do HL7.writeFile(filepath, req)
+	
+	quit 1
+}
+]]></Routine>
+</Export>
