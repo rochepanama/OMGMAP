@@ -28,7 +28,7 @@ WRITEHL7
 		
 		if (request '="") 
 		{	
-			//k ^OMGMAP.ReqValidated(request) 
+			k ^OMGMAP.ReqValidated(request) 
 		}
 		set request = $order(^OMGMAP.ReqValidated(request))		
 	}
