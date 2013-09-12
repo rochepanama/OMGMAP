@@ -1,121 +1,551 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Export generator="Cache" version="21" zv="Cache for Windows (x86-32) 2007.1.3 (Build 607U)" ts="2013-09-09 02:21:49">
-<Routine name="WRITEHL7" type="MAC" languagemode="0" timestamp="63074,6523"><![CDATA[
- /**
-  *	Procedure to write outgoing HL7 files to create requests on Omega. The files
-  * must be named in the following format: 
-  *		requestno.res
-  * 
-  * Where "requestno" is the request number sent to Omega and ".res" is the extension (lowercase)
-  *
-  * @author 	<a href="mailto:ivan.quintero@roche.com">Ivan Quintero</a>
-  * @requires	^WCONF("P",413)	........... Path incoming HL7 files are store
-  * @requires	^WCONF("P",3) 	........... Number of digits in the request number
-  *
-  * @example	>do ^WRITEHL7
- **/
- 
-WRITEHL7
+<Export generator="Cache" version="21" zv="Cache for Windows (x86-32) 2007.1.3 (Build 607U)" ts="2013-09-12 16:15:01">
+<Class name="OMGMAP.WriteHL7">
+<Description>
+</Description>
+<Super>%RegisteredObject,%XML.Adaptor</Super>
+<TimeCreated>63071,26834.535609</TimeCreated>
+
+<Property name="fieldsMSH">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Property name="fieldsPID">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Property name="fieldsPV1">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Property name="fieldsORC">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Property name="fieldsOBR">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Property name="fieldsOBX">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Property name="fieldsSPM">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<UDLText name="T">
+<Content><![CDATA[
+// properties to store each HL7 records (H,P,O,L)
+
+]]></Content>
+</UDLText>
+
+<Property name="recordMSH">
+<Type>%String</Type>
+</Property>
+
+<Property name="recordPID">
+<Type>%String</Type>
+</Property>
+
+<Property name="recordPV1">
+<Type>%String</Type>
+</Property>
+
+<Property name="recordORC">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Property name="recordOBR">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Property name="recordOBX">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Property name="recordSPM">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Property name="recordL">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Property name="isHL7">
+<Type>%Boolean</Type>
+</Property>
+
+<UDLText name="T">
+<Content><![CDATA[
+// HL7 properties
+
+]]></Content>
+</UDLText>
+
+<Property name="host">
+<Type>%String</Type>
+</Property>
+
+<Property name="requestno">
+<Type>%String</Type>
+</Property>
+
+<Property name="requestdatetime">
+<Type>%String</Type>
+</Property>
+
+<Property name="requestdate">
+<Type>%String</Type>
+</Property>
+
+<Property name="requesttime">
+<Type>%String</Type>
+</Property>
+
+<Property name="priority">
+<Type>%String</Type>
+</Property>
+
+<Property name="dob">
+<Type>%String</Type>
+</Property>
+
+<Property name="sex">
+<Type>%String</Type>
+</Property>
+
+<Property name="patientid">
+<Type>%String</Type>
+</Property>
+
+<Property name="fullname">
+<Type>%String</Type>
+</Property>
+
+<Property name="firstname">
+<Type>%String</Type>
+</Property>
+
+<Property name="lastname">
+<Type>%String</Type>
+</Property>
+
+<Property name="middlename">
+<Type>%String</Type>
+</Property>
+
+<Property name="medicalservice">
+<Type>%String</Type>
+</Property>
+
+<Property name="origin">
+<Type>%String</Type>
+</Property>
+
+<Property name="patienttype">
+<Type>%String</Type>
+</Property>
+
+<Property name="destination">
+<Type>%String</Type>
+</Property>
+
+<Property name="observation">
+<Type>%String</Type>
+</Property>
+
+<Property name="episode">
+<Type>%String</Type>
+</Property>
+
+<Property name="doctor">
+<Type>%String</Type>
+</Property>
+
+<Property name="dx">
+<Type>%String</Type>
+</Property>
+
+<Property name="bed">
+<Type>%String</Type>
+</Property>
+
+<Property name="motive">
+<Type>%String</Type>
+</Property>
+
+<Property name="tests">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Method name="writeFile">
+<FormalSpec>filepath:%String,request:%Integer</FormalSpec>
+<Implementation><![CDATA[
+	// @params: 	file	..........	filepath to write
+	// @output: 	nothing
+	// @desc: 		Method to write results HL7 file
 	
-	// loop throug validated requests (^OMGMAP.ReqValidated)
+	// ** build HL7 result message
 	
-	set request = $order(^OMGMAP.ReqValidated(""))
+	// MSH record
+	do ..writeMSH()
 	
-	while request '= ""
+	// PID record
+	do ..writePID()
+	
+	// PV1 record
+	do ..writePV1()
+	
+	// ORC record
+	do ..writeORC()
+	
+	// OBR record
+	do ..writeOBR()
+	
+	// OBX record
+	do ..writeOBX()
+	
+		// OBX record
+	do ..writeSPM()
+
+	// create file
+	Set file=##class(%File).%New(filepath)
+	Do file.Open("WSN")
+	
+	Do file.WriteLine(..recordMSH)
+	Do file.WriteLine(..recordPID)
+	Do file.WriteLine(..recordPV1)
+	Do file.WriteLine(..recordORC)
+	
+	
+	
+	set keyOBR = $order(..recordOBR(""))
+	while keyOBR '=""
 	{
-		write request,!
-		set ret = $$prepToHost(request)
-		
-		if (request '="") 
-		{	
-			//k ^OMGMAP.ReqValidated(request) 
-		}
-		set request = $order(^OMGMAP.ReqValidated(request))		
+		do file.WriteLine(..recordOBR(keyOBR))
+		do file.WriteLine(..recordOBX(keyOBR))
+		do file.WriteLine(..recordSPM(keyOBR))
+		set keyOBR = $order(..recordOBR(keyOBR))	
 	}
 	
- 
-prepToHost(req)
-{
-	/** Procedure that prepares data to be sent to the HOST. It loops through the 
-	  *
-	  * @params {Integer} req
-	**/
+    ; Do file.WriteLine(..recordSPM)
 	
-	// loop through ^LDIA(request)
+	/*set keyOBX = $order(..recordOBX(""))
+	while keyOBX '=""
+	{
+		do file.WriteLine(..recordOBX(keyOBX))
+		set keyOBX = $order(..recordOBX(keyOBX))	
+	}*/
 	
-	// send action flag (1:send, 2:do not send)
-	set send = 0
+	//do file.WriteLine(..recordL)
+]]></Implementation>
+</Method>
+
+<Method name="writeMSH">
+<Implementation><![CDATA[
+	// @desc: 		Write MSH HL7 record
 	
-	// loop sections
-	set section = $order(^LDIA(req,""))
+	// validation
+	if (..host = "") {	quit "Error: empty 'host' field" }
+	
+	set ..recordMSH = "MSH|^~\&|MODULAB|"_..host_"|MODULAB|INFORMATICA|"_..getTimeStamp()_"||ORU^R01^ORU_R01|LAB31376387378765|P|2.5"
+	//set ..recordMSH = "MSH|^~\&|MODULAB|"_..host_"||||||||P||"_..getTimeStamp()_"|||||||||||||||||||||"
+    //MSH|^~\&|MODULAB|HNRSR|MODULAB|INFORMATICA|20130813114938+0200||ORU^R01^ORU_R01|LAB31376387378765|P|2.5
+]]></Implementation>
+</Method>
+
+<Method name="writePID">
+<Implementation><![CDATA[
+	// @desc: 		Write PID HL7 record
+	
+	// set properties
+	do ..setDemographics()
+	
+	if (..patientid = "") || (..lastname = "") || (..firstname = "") || (..dob = "") || (..sex = "")
+	{
+		quit "Error: empty demographics field"
+	}
+	//PID|1||2009/003404^^^^PI~01769430V^^^^PPN||BULLIDO TORO^ANGELA||19350521120000+0100|F|||AVDA MENENDEZ PELAYO 17, 3º A. 28009. Madrid. MADRID. ESPAÑA   ||^^^^^^^^914097546|||||||||||||||||N
+	set ..recordPID = "PID|1||"_..patientid_"^^^^"_..patientid_"^^^^||"_..lastname_"^"_..firstname_"||"_..dob_"|"_..sex_"||||||||||||||||||||||N"
+	//set ..recordPID = "PID|1|"_..requestno_"|"_..patientid_"||"_..lastname_"^"_..middlename_"^"_..firstname_"||"_..dob_"|"_..sex_"||||||1^RIESGOS DEL TRABAJO||||^Descripción||||"_..medicalservice_"|"_..requestdatetime_"|"_..priority_"|"_..origin_"||"_..patienttype_"||||||||"
+]]></Implementation>
+</Method>
+
+<Method name="writePV1">
+<Implementation><![CDATA[
+	// @desc: 		Write PV1 HL7 record
+	
+	// set properties
+	do ..setDemographics()
+	
+	
+	if (..patientid = "") || (..lastname = "") || (..firstname = "") || (..dob = "") || (..sex = "")
+	{
+		quit "Error: empty demographics field"
+	}
+	//PV1|1||2009/003404^^^^PI~01769430V^^^^PPN||BULLIDO TORO^ANGELA||19350521120000+0100|F|||AVDA MENENDEZ PELAYO 17, 3º A. 28009. Madrid. MADRID. ESPAÑA   ||^^^^^^^^914097546|||||||||||||||||N
+	set ..recordPV1 = "PV1|1|"
+]]></Implementation>
+</Method>
+
+<Method name="writeORC">
+<Implementation><![CDATA[
+	// @desc: 		Write ORC HL7 record
+	
+	// set properties
+	do ..setDemographics()
+	
+	//ORC|SC||13080100^MODULAB|30000388|CM||||20130813114908+0200|||10000^INF ADMIN. Administrador|||||||||Ingresados^^^^^^FI^^^I
+	
+	set ..recordORC = "ORC||||"_..requestno_"|||||"_..requestdatetime_"||||||||||||"
+]]></Implementation>
+</Method>
+
+<Method name="writeOBR">
+<Implementation><![CDATA[
+	
+	//OBR|1|30000388|13080100|HEMO^HEMOGRAMA^MODULAB||||||I||||||10000^INF ADMIN. Administrador||||1||||LAB|F|||||||ADB^20130813114928+0200
+	
+	// set properties
+	do ..setDemographics()
+	
+	do ..setTestResults()
+	
+	set key = $order(..tests(""))
+	
+
+	
+	while key '=""
+	{
+		set ..recordOBR(key) = "OBR|"_key_"|"_..requestno_"||"_..tests(key,"testcode")_"^^||||||||||||||||||||||||||||ADB^"_..requestdatetime
+	
+		set key = $order(..tests(key))
+	}
+]]></Implementation>
+</Method>
+
+<Method name="writeOBX">
+<Implementation><![CDATA[
+	// @desc: 		Write OBX HL7 records
+	
+	// set record lines
+	do ..setTestResults()
+	
+	set key = $order(..tests(""))
+	
+	while key '=""
+	{
+		//OBX|1|NM|LEU^LEUCOCITOS^MODULAB||1.00|10*3/µL|4.3 - 10.8|LL|||F|||20130813114920||ADB
+		;set ..recordOBX(key) = "R|"_key_"|"_..requestno_"|^^^"_..tests(key,"testcode")_"^B^0|"_..tests(key,"result")_"|"_..tests(key,"units")_"|"_..tests(key,"ranges")_"|N|N|V||"_..tests(key,"valuser")_"|"
+		set ..recordOBX(key) = "OBX|1|NM|"_..tests(key,"testcode")_"^^||"_..tests(key,"result")_"|||||||"_..tests(key,"valdatetime")
+		
+		set key = $order(..tests(key))
+	}
+]]></Implementation>
+</Method>
+
+<Method name="writeSPM">
+<Implementation><![CDATA[
+	// @desc: 		Write SPM HL7 record
+	
+	// set properties
+	do ..setDemographics()
+	
+	do ..setTestResults()
+	
+	set key = $order(..tests(""))
+	
+	while key '=""
+	{
+		
+		//if ($data(^LUPRO(..tests(key,"testcode"))){} else {set ^control="ok"}
+
+		
+		set ^type(key)=..tests(key,"testcode")
+		
+		;set ^n(key)=key
+	
+		  
+		
+		if (^type(key) '=""){
+			
+			set testtype=$p(^LUPRO(^type(key)),"#",4)		  
+		    set muestra=^LUMOS(testtype)
+		    		
+			}
+		
+		//SPM|1|0213080100||1^Sangre total EDTA||||||||||||||20130813114857||Y||||||1
+		;set ..recordOBX(key) = "R|"_key_"|"_..requestno_"|^^^"_..tests(key,"testcode")_"^B^0|"_..tests(key,"result")_"|"_..tests(key,"units")_"|"_..tests(key,"ranges")_"|N|N|V||"_..tests(key,"valuser")_"|"
+		set ..recordSPM(key) = "SPM|1|"_..requestdatetime_"||"_testtype_"^"_muestra_"||||||||||||||"_..requestdatetime
+		
+		set key = $order(..tests(key))
+	}
+]]></Implementation>
+</Method>
+
+<Method name="getRefRanges">
+<FormalSpec>pet:%Integer,test:%Integer</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	
+	// Halar edad y sexo del paciente	
+	set patid = $p(^LDIA(pet),"#", 2)				// Extraer cedula
+	if (patid '= "")
+	{
+		set afnac = $e($p(^LPAC(patid),"#",5),1,4)		// Extraer año de nacimiento
+		set sex = $p(^LPAC(patid),"#",4)				// Extraer sexo		
+		set y = $e($ZDateTime($horolog,8),1,4)			// Extraer año actual
+		set age = y - afnac								// Calcular edad
+	}
+	else {	quit "-"	}
+
+	// Find first node
+	Set key = $order(^LUPRO(test,sex,""))
+	
+	//K ^REFVALS
+	
+	set loage = 0
+	set hiage = 999
+	
+	// determinar si existen valores para el sexo del paciente
+	if ($d(^LUPRO(test,sex)) = 0)
+	{
+		set sex = 0					// de no existir, poner sexo generico	
+	}
+    	
+ 	// Find next node
+ 	while (key '= "")
+ 	{
+		s akey = key
+      		      		
+      	// grabar limite inferior
+      	if (akey < age)	{  	if (akey > loage)  	{  	set loage = akey   }   	}
+      	
+      	// grabar limite superior
+      	if (akey > age)	{  	if (akey < hiage)  	{  	set hiage = akey    }  	}
+      		
+      	//set ^REFVALS(sex,akey)=pru 
+      		
+     	Set key = $order(^LUPRO(test,sex,akey))	
+ 	}
+ 	
+ 	// mostrar valores de referencia usando el bracket superior de edad
+	set lo = $p($g(^LUPRO(test,sex,hiage)),"#",1)
+	set hi = $p($g(^LUPRO(test,sex,hiage)),"#",2)
+	
+	quit lo_" - "_hi
+]]></Implementation>
+</Method>
+
+<Method name="getTimeStamp">
+<Implementation><![CDATA[
+	// @desc: 		Get current timestamp in YYYYMMDDHHMMSS format
+	
+	set datetime = $zdatetime($h,8)
+	
+	quit $tr(datetime,"/: ")
+]]></Implementation>
+</Method>
+
+<Method name="setDemographics">
+<Implementation><![CDATA[
+	// @desc: 	Setup demographic properties for P HL7 record
+	
+	// request information
+	set datareq = $get(^LDIA(..requestno))
+	
+	set ..patientid = $piece(datareq,"#",2)
+	set ..requestdate = $piece(datareq,"#",1)
+	set ..requesttime = $tr($piece(datareq,"#",15),": ")
+	set ..requestdatetime = ..requestdate_..requesttime
+	set ..medicalservice = ##class(OMGMAP.MedServMap).getExtCode($piece(datareq,"#",4))
+	set ..origin = ##class(OMGMAP.OriginMap).getExtCode($piece(datareq,"#",5))
+	set ..priority = $piece(datareq,"#",11)
+	set ..patienttype = ##class(OMGMAP.PatTypeMap).getExtCode($piece(datareq,"#",13))
+	
+	// patient information
+	set datapat = $get(^LPAC(..patientid))
+	
+	set ..firstname = $piece(datapat,"#",2)
+	set ..lastname = $piece(datapat,"#",1)
+	set ..middlename = ""
+	set ..sex = ..getSex($piece(datapat,"#",4))
+	set ..dob = $piece(datapat,"#",5)
+]]></Implementation>
+</Method>
+
+<Method name="setTestResults">
+<Implementation><![CDATA[
+	// @desc:		Set O record for HL7 message
+	
+	// set test counter
+	set counter = 1
+	
+	set section = $order(^LDIA(..requestno,""))
 	
 	while section '=""
 	{
-		// loop tests
-		set testcode = $order(^LDIA(req,section,""))
-		
-		while testcode '=""
-		{			
-			// get global value
-			set data = $get(^LDIA(req,section,testcode))
+		// avoid looping through unexisting sections
+		if (section > 0)
+		{
+			set testcode = $order(^LDIA(..requestno,section,""))
 			
-			// test result
-			set result = $piece(data,"#",1)
-			
-			// result status (1:validated, 2:printed)
-			set status = $piece(data,"#",2)
-			
-			// last sent result, if exists, for this request
-			set sentres = $get(^OMGMAP.ReqValidatedRes(req,testcode))
-			
-			// validate before sending to host
-			if (result '= "") & (status >= 1) & (sentres '= testcode)
+			while testcode '=""
 			{
-				// set send flag to send
-				set send = 1
-			}
-			
-			set testcode = $order(^LDIA(req,section,testcode))
+				// avoid looping through test profiles
+				if (testcode > 99)
+				{
+					// get test data
+					set data = $get(^LDIA(..requestno,section,testcode))			
+					
+					set ..tests(counter,"testcode") = ##class(OMGMAP.TestMap).getExtCode(testcode)
+					set ..tests(counter,"result") = $piece(data,"#",1)
+					set ..tests(counter,"ranges") = ..getRefRanges(..requestno,testcode)
+					set ..tests(counter,"units") = ..getTestUnits(testcode)
+					set ..tests(counter,"valuser") = $piece(data,"#",3)
+					set ..tests(counter,"valdatetime") = $tr($piece(data,"#",4),"^:")					
+					
+					set counter = counter + 1
+					
+				}
+				
+				set testcode = $order(^LDIA(..requestno,section,testcode))
+			}			
 		}
 		
-		set section = $order(^LDIA(req,section))	
+		set section = $order(^LDIA(..requestno,section))	
 	}
+]]></Implementation>
+</Method>
+
+<Method name="getSex">
+<FormalSpec>sex</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	// @params: 	sex	.............	Omega sexcode
+	// @output: 	conversion to HL7 sex codes
+	// 					male	...........	M
+	// 					female	........... F
 	
-	if (send = 1)
+	quit $select(sex=1:"M",sex=2:"F",sex=0:"",sex="":"")
+]]></Implementation>
+</Method>
+
+<Method name="getTestUnits">
+<FormalSpec>testcode</FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	// @params: 	testcode	.........	Omega test code
+	// @output: 	units corresponding to the testcode
+	
+	if ($data(^LUPRO(testcode)))
 	{
-		// send to host
-		set ret = $$sendToHost(req)		
+		quit $piece(^LUPRO(testcode),"#",14)
 	}
-	
-	quit 1
-}
- 
-sendToHost(req)
-{
-	/**
-	 * Method to create HL7 results file
-	 *
-	 * @params 		{Integer} req	........... request number to send to host
-	 *
-	**/
-		
-	// folder where HL7 files are saved
-	//set folder = "c:/test/" 
-	
-	set folder = $p($g(^WCONF("P",413)),"#",2)
-	
-	// setup filepath for HL7 file
-	set filepath = folder_"\"_req_".res"
-	
-	set HL7 = ##class(OMGMAP.WriteHL7).%New()
-	
-	// set required properties to init
-	set HL7.host = "OMEGA"
-	set HL7.requestno = req
-	
-	do HL7.writeFile(filepath, req)
-	
-	quit 1
-}
-]]></Routine>
+	else {	quit ""		}
+]]></Implementation>
+</Method>
+</Class>
 </Export>
