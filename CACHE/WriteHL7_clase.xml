@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Export generator="Cache" version="21" zv="Cache for Windows (x86-32) 2007.1.3 (Build 607U)" ts="2013-09-06 15:28:34">
+<Export generator="Cache" version="21" zv="Cache for Windows (x86-32) 2007.1.3 (Build 607U)" ts="2013-09-20 09:27:50">
 <Class name="OMGMAP.WriteHL7">
 <Description>
 </Description>
@@ -31,6 +31,10 @@
 </Property>
 
 <Property name="fieldsSPM">
+<MultiDimensional>1</MultiDimensional>
+</Property>
+
+<Property name="fieldsMSA">
 <MultiDimensional>1</MultiDimensional>
 </Property>
 
@@ -69,7 +73,7 @@
 <MultiDimensional>1</MultiDimensional>
 </Property>
 
-<Property name="recordL">
+<Property name="recordMSA">
 <MultiDimensional>1</MultiDimensional>
 </Property>
 
@@ -207,9 +211,11 @@
 	// OBX record
 	do ..writeOBX()
 	
-	// L record
-	//do ..writeL()
+		// OBX record
+	do ..writeSPM()
 	
+	do ..writeMSA()
+
 	// create file
 	Set file=##class(%File).%New(filepath)
 	Do file.Open("WSN")
@@ -218,26 +224,44 @@
 	Do file.WriteLine(..recordPID)
 	Do file.WriteLine(..recordPV1)
 	Do file.WriteLine(..recordORC)
-	;Do file.WriteLine(..recordOBR)
+	
 	
 	
 	set keyOBR = $order(..recordOBR(""))
 	while keyOBR '=""
 	{
 		do file.WriteLine(..recordOBR(keyOBR))
+		do file.WriteLine(..recordOBX(keyOBR))
+		do file.WriteLine(..recordSPM(keyOBR))
 		set keyOBR = $order(..recordOBR(keyOBR))	
 	}
 	
-
+    ; Do file.WriteLine(..recordSPM)
 	
-	set keyOBX = $order(..recordOBX(""))
+	/*set keyOBX = $order(..recordOBX(""))
 	while keyOBX '=""
 	{
 		do file.WriteLine(..recordOBX(keyOBX))
 		set keyOBX = $order(..recordOBX(keyOBX))	
-	}
+	}*/
 	
 	//do file.WriteLine(..recordL)
+]]></Implementation>
+</Method>
+
+<Method name="writeACK">
+<FormalSpec>filepath:%String,request:%Integer</FormalSpec>
+<Implementation><![CDATA[
+
+	do ..writeMSH()	
+	do ..writeMSA()
+
+	// create file
+	Set file=##class(%File).%New(filepath)
+	Do file.Open("WSN")
+	
+	Do file.WriteLine(..recordMSH)
+	Do file.WriteLine(..recordMSA)
 ]]></Implementation>
 </Method>
 
@@ -313,11 +337,11 @@
 	
 	set key = $order(..tests(""))
 	
-	set ^debug($h,"ketest")=key
+
 	
 	while key '=""
 	{
-		set ..recordOBR(key) = "OBR|1|"_..requestno_"||"_..tests(key,"testcode")_"^^||||||||||||||||||||||||||||ADB^"_..requestdatetime
+		set ..recordOBR(key) = "OBR|"_key_"|"_..requestno_"||"_..tests(key,"testcode")_"^^||||||||||||||||||||||||||||ADB^"_..requestdatetime
 	
 		set key = $order(..tests(key))
 	}
@@ -337,15 +361,57 @@
 	{
 		//OBX|1|NM|LEU^LEUCOCITOS^MODULAB||1.00|10*3/µL|4.3 - 10.8|LL|||F|||20130813114920||ADB
 		;set ..recordOBX(key) = "R|"_key_"|"_..requestno_"|^^^"_..tests(key,"testcode")_"^B^0|"_..tests(key,"result")_"|"_..tests(key,"units")_"|"_..tests(key,"ranges")_"|N|N|V||"_..tests(key,"valuser")_"|"
-		set ..recordOBX(key) = "OBX|"_key_"|NM|"_..tests(key,"testcode")_"^^||"_..tests(key,"result")_"|||||||"_..tests(key,"valdatetime")
+		set ..recordOBX(key) = "OBX|1|NM|"_..tests(key,"testcode")_"^^||"_..tests(key,"result")_"|||||||"_..tests(key,"valdatetime")
 		
 		set key = $order(..tests(key))
 	}
 ]]></Implementation>
 </Method>
 
-<Method name="writeL">
-<Implementation><![CDATA[	set ..recordL = "L|1|N"
+<Method name="writeSPM">
+<Implementation><![CDATA[
+	// @desc: 		Write SPM HL7 record
+	
+	// set properties
+	do ..setDemographics()
+	
+	do ..setTestResults()
+	
+	set key = $order(..tests(""))
+	
+	while key '=""
+	{
+		
+		//if ($data(^LUPRO(..tests(key,"testcode"))){} else {set ^control="ok"}
+
+		
+		set ^type(key)=..tests(key,"testcode")
+		
+		;set ^n(key)=key
+	
+		  
+		
+		if (^type(key) '=""){
+			
+			set testtype=$p(^LUPRO(^type(key)),"#",4)		  
+		    set muestra=^LUMOS(testtype)
+		    		
+			}
+		
+		//SPM|1|0213080100||1^Sangre total EDTA||||||||||||||20130813114857||Y||||||1
+		;set ..recordOBX(key) = "R|"_key_"|"_..requestno_"|^^^"_..tests(key,"testcode")_"^B^0|"_..tests(key,"result")_"|"_..tests(key,"units")_"|"_..tests(key,"ranges")_"|N|N|V||"_..tests(key,"valuser")_"|"
+		set ..recordSPM(key) = "SPM|1|"_..requestdatetime_"||"_testtype_"^"_muestra_"||||||||||||||"_..requestdatetime
+		
+		set key = $order(..tests(key))
+	}
+]]></Implementation>
+</Method>
+
+<Method name="writeMSA">
+<Implementation><![CDATA[
+	// @desc: 		Write MSA HL7 record > ACK File
+	
+	set ..recordMSA = "MSA|AA|ID20120223145941"
 ]]></Implementation>
 </Method>
 
