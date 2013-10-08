@@ -1,112 +1,108 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Export generator="Cache" version="21" zv="Cache for Windows (x86-32) 2007.1.3 (Build 607U)" ts="2013-09-06 08:20:31">
-<Routine name="hli" type="MAC" languagemode="0" timestamp="63071,29947"><![CDATA[
+<Export generator="Cache" version="21" zv="Cache for Windows (x86-32) 2007.1.3 (Build 607U)" ts="2013-10-07 16:47:14">
+<Routine name="READHL7" type="MAC" languagemode="0" timestamp="63102,59254"><![CDATA[
+READHL7
  /**
-  *	Procedure to read incoming HL7 files to create requests on Omega 300. The files
+  *	Procedure to read incoming HL7 files to create requests on Omega. The files
   * must be named in the following format: 
   *		requestno.pet
   * 
   * Where "requestno" is the request number sent to Omega and ".pet" is the extension (lowercase)
   *
-  * @author 	<a href="mailto:juan.perez.jp5@roche.com">Juan Pablo Perez</a>
+  * @author 	<a href="mailto:ivan.quintero@roche.com">Ivan Quintero</a>
   * @requires	^WCONF("P",412)	........... Path incoming HL7 files are store
   * @requires	^WCONF("P",3) 	........... Number of digits in the request number
   * @requires	errorfolder	 	........... Path to store error HL7 files
   *
-  * @example	>d ^READHL7
+  * @example	>do ^READHL7
  **/
  
-	
- 
-HLIMPORT
- 
-     k ^debug
+ 	k ^debug
+ 	k ^logdata
  
     // Buscamos el folder donde esta el archivo con formato HL7
- 	set folder ="c:/test/"
- 
+ 	set folder = $piece(^WCONF("P",412),"#",2)
+ 	write folder,!
  	// ** leer archivos de folder
 	set filesrs = ##class(%Library.ResultSet).%New("%Library.File:FileSet")
-	do filesrs.Execute(folder,"*.cap")
+	do filesrs.Execute(folder,"*.hl7")
 	
-		while(filesrs.Next())
+	while(filesrs.Next())
 	{
       set filefullpath = filesrs.Get("Name")
  
  	  // file name
  	  set filename = ##class(%File).GetFilename(filefullpath)
  	  
-      set HL7 = ##class(OMGMAP.InHL7).%New()
+      set HL7 = ##class(OMGMAP.ParseHL7).%New()
       
       
-      // parse HL7 file
-      do HL7.readFile(filefullpath)
-       w "Peticion: "_HL7.requestno,!
-       w "-------------Datos de Paciente-------------",!
-       w "Patientid: "_HL7.patientid,!
-       w "Nombre:"_HL7.fullname,!
-       w "Fechanac:"_HL7.dob,!
-       w "Sexo:"_HL7.sex,!
-       w "-------------Otros Datos-------------",!
-       w "Prioridad:"_HL7.priority,!
-       w "Fecha de Registro:"_$Extract(HL7.requestdatetime,1,8),!
-       w "Medicalservice:"_HL7.medicalservice,!
-       w "Host:"_HL7.host,!
-       w "dx:"_HL7.dx,!
-       w "Doctor:"_HL7.doctor,!
-       w "-------------Pruebas y Perticiones-------------",!
-       w "Registro:"_HL7.requestdate,!
-       w "Origen:"_HL7.origin,!
-       w "Observacion:"_HL7.observation,!
-       w "Destination:"_HL7.destination,!
-       w "Bed:"_HL7.bed,!
-       w "Motivo:"_HL7.motive,!
-       w "Tipo Paciente:"_HL7.patienttype,!
-       w "Episodio:"_HL7.episode,!
-       w "Requesttime:"_HL7.requesttime,!
+      	// parse HL7 file
+      	do HL7.readFile(filefullpath)
+       	w "Peticion: "_HL7.requestno,!
+       	w "-------------Datos de Paciente-------------",!
+       	w "Patientid: "_HL7.patientid,!
+       	w "Nombre:"_HL7.fullname,!
+      	w "Fechanac:"_HL7.dob,!
+       	w "Sexo:"_HL7.sex,!
+       	w "-------------Otros Datos-------------",!
+       	w "Prioridad:"_HL7.priority,!
+       	w "Fecha de Registro:"_$Extract(HL7.requestdatetime,1,8),!
+       	w "Medicalservice:"_HL7.medicalservice,!
+       	w "Host:"_HL7.host,!
+       	w "Origen:"_HL7.origin,!
+       	w "Tipo de Paciente:"_HL7.patienttype,!
+       	w "dx:"_HL7.dx,!
+       	w "Doctor:"_HL7.doctor,!
+       	w "Codigo Doctor:"_HL7.codigodoctor,!
+       	w "-------------Pruebas y Perticiones-------------",!
+       	w "Registro:"_HL7.requestdate,!
+		w "Requesttime:"_HL7.requesttime,!
+		
        
        
-       
-       
-       // save patient
-	  set ret = $$savePatient(HL7.requestno,HL7.patientid,HL7.fullname,HL7.dob,HL7.sex,HL7.medicalservice,HL7.host,HL7.dx,HL7.requestdatetime,HL7.priority,HL7.origin,HL7.doctor)
-      
-      ;set ^debug($h,"peticion")=HL7.requestno
-      
-      ;set data=HL7.requestno_"#"_HL7.requestdate_"#"_HL7.patientid_"#"_HL7.doctor_"#"_HL7.medicalservice_"#"_HL7.origin_"#"_HL7.dx_"#"_HL7.observation_"#"_HL7.destination_"#"_HL7.bed_"##"_HL7.priority_"#"_HL7.patienttype_"#"_HL7.episode_"#"_HL7.requesttime_"#######"
+       if (HL7.requestno'=""){
+		// save patient
+		set ret = $$savePatient(HL7.requestno,HL7.patientid,HL7.fullname,HL7.dob,HL7.sex,HL7.medicalservice,HL7.host,HL7.dx,HL7.requestdatetime,HL7.priority,HL7.origin,HL7.doctor)
+		
+		set ret = $$saveRequest(HL7.requestno,HL7.requestdate,HL7.patientid,HL7.doctor,HL7.codigodoctor,HL7.medicalservice,HL7.origin,HL7.dx,HL7.observation,HL7.destination,HL7.bed,HL7.priority,HL7.patienttype,HL7.episode,HL7.requesttime)
+		
+		;set ^debug($h,"saveRequest")=ret
+		// save tests
+		set counter = $order(HL7.tests(""))
+		
+		set ^debug($h,"counter")=counter
  
-      ;set ^debug($h,"datareq")=data
-      
-      set ret = $$saveRequest(HL7.requestno,HL7.requestdate,HL7.patientid,HL7.doctor,HL7.medicalservice,HL7.origin,HL7.dx,HL7.observation,HL7.destination,HL7.bed,HL7.priority,HL7.patienttype,HL7.episode,HL7.requesttime)
- 
-	  ;set ^debug($h,"saveRequest")=ret
-       // save tests
-	  set counter = $order(HL7.tests(""))
-	  
-	  set ^debug($h,"counter")=counter
-			
-	  
-	  		
 		while counter '=""
 		{
 			set testcode = HL7.tests(counter,"testcode")
 			set action = HL7.tests(counter,"action")
 			
+			
+			
 			w "Numero de Peticion:"_HL7.requestno,!
 			w "Codigo de pruebas:"_testcode,!
 			w "Action:"_action,!
 			
-			set ^debug($h,"testcode")=counter_"#"_testcode_"#"_action_"#"_HL7.requestno_"#"_HL7.requestdate
+			set ^debug($h,"testcode",counter)=counter_"#"_testcode_"#"_action_"#"_HL7.requestno_"#"_HL7.requestdate
 			
-			do saveTest(HL7.requestno,testcode,action,HL7.requestdate) 
+			if (testcode '= ""){
+				
+				
+			do saveTest(HL7.requestno,testcode,action,HL7.requestdate,counter) 			
 			set ^logdata(HL7.requestno,testcode)="Prueba:"_testcode_" en peticion:"_HL7.requestno    	     	
-			set counter = $order(HL7.tests(counter))		
-		}	
-      k HL7
- 
-    
-      
+			}
+			set counter = $order(HL7.tests(counter))
+					
+		}
+		
+       }	
+		k HL7
+	// borrar
+ 	   do ##class(%File).Delete(filefullpath)      
 	} 
+	
+	
 	
  quit
 	
@@ -119,54 +115,30 @@ savePatient(requestno,patientid,fullname,dob,sex,medicalservice,host,dx,requestd
 	// P|1|77764|84-67-87|^12345678|OBAMA^BARAK^FERNANDEZ||14980101|M|||||10000||||||||0101898|1010|20121004141922^|R|12||A|||||191|||
  
 	// build HL7 P record for Omega
-	set HL7data = "P|1|"_requestno_"|"_patientid_"||^"_fullname_"||"_dob_"|"_sex_"|||||||||||||"_dx_"|"_medicalservice_"|"_requestdate_"|"_priority_"|"_origin_"|||||||"_doctor_"|||"
-	
-	set ^debug($h,"patdata") = HL7data
-	
-    set pacid=$data(^LPAC(patientid))
-    
-    set ^debug($h,"idpac") = pacid
-    
-	if (pacid=0){
-	s ret=$$GrabaPac^WINIES2(user,HL7data,host,medicalservice,"")
-	set ^logdata(requestno,patientid)="Paciente "_fullname_" importado correctamente"
+	set data = "P|1|"_requestno_"|"_patientid_"||^"_fullname_"||"_dob_"|"_sex_"|||||||||||||"_dx_"|"_medicalservice_"|"_requestdate_"|"_priority_"|"_origin_"|||||||"_doctor_"|||"
+	if (patientid '=""){
+	set ^logdata(requestno,patientid)="Datos de Paciente "_fullname_" Guardados con exito"
+	set ret = $$GrabaPac^WINIES2(user,data,host,medicalservice,"")
 	quit ret
 	}
-	if (pacid=11){
-	s ret=""	
-	set ^logdata(requestno,patientid)="Paciente existe con cedula similar"
-	quit ret	
-	}	
-	
+	quit ""
 		
 }
  
-saveRequest(requestno,requestdate,patientid,doctor,medicalservice,origin,dx,observation,destination,bed,priority,patienttype,episode,requesttime)
+saveRequest(requestno,requestdate,patientid,doctor,codigodoctor,medicalservice,origin,dx,observation,destination,bed,priority,patienttype,episode,requesttime)
 {
 	set user = "~omega~"
-	set data=requestdate_"#"_patientid_"#"_doctor_"#"_medicalservice_"#"_origin_"#"_dx_"#"_observation_"#"_destination_"#"_bed_"##"_priority_"#"_patienttype_"#"_episode_"#"_requesttime_"#######"
+	set data=requestdate_"#"_patientid_"#"_codigodoctor_"#"_medicalservice_"#"_origin_"#"_dx_"#"_observation_"#"_destination_"#"_bed_"##"_priority_"#"_patienttype_"#"_patienttype_"#"_requesttime_"######"
+	//"20131002#8-1106-1203#HERRERA CASTRO,DAYANARA#1010#829######R#A#H#15:02:02#17:02###X###X#X#############requesttime#"
  
 	// $$Pet^WINALTA1(user,pet,DatPet,"","","","",1)	(Urgente)
-	// $$Pet^WINALTA1(user,pet,DatPet) (Rutina)
-	set ^debug($h,"petdata") = data
-	set testid=$data(^LDIA(requestno))
-	set ^debug($h,"testid") = testid
-	if (testid=1){
 	set ret = $$Pet^WINALTA1(user,requestno,data)
-	//GLOBAL DE REGISTRO DE ACTIVIDAD
-    set ^logdata(requestno,patientid,"Peticion")="Importada la peticion:"_requestno
 	quit ret
-	}
-	if (testid=11){
-	set ret = ""
-    set ^logdata(requestno,patientid,"Peticion")="Peticion ya existe en omega"
-	quit ret
-	}
  
 } 
  
  
-saveTest(requestno,testcode,action,requestdate)
+saveTest(requestno,testcode,action,requestdate,counter)
 {
 	set user = "~omega~"
 	set year = $extract(requestdate,1,4)
@@ -178,9 +150,10 @@ saveTest(requestno,testcode,action,requestdate)
 		// alta a la prueba si no es funcional
 		
 		if (testcode '= "")
-		{
+		 {
+			 set ^debug($h,"testdata",counter)=user_"#"_requestno_"#"_testcode_"#"_requestdate
 		 	quit $$altaCodi^WINALTA(user,requestno,testcode,1)	
-		 	set ^debug($h,"testdata")=testcode_"#"_action_"#"_requestno_"#"_requestdate
+		 	;set ^debug($h,"testdata")=testcode_"#"_action_"#"_requestno_"#"_requestdate
 		 							
 		}
 		else
@@ -196,5 +169,16 @@ saveTest(requestno,testcode,action,requestdate)
 		set ^debug($h,"testdata")=testcode_"#"_action_"#"_requestno_"#"_requestdate
 	}
 }
+ 
+ACK(requestno)
+{
+	
+	
+	
+}
+ 
+ 
+ 
+ 
 ]]></Routine>
 </Export>

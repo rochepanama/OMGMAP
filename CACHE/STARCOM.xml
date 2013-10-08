@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="21" zv="Cache for Windows (x86-32) 2007.1.3 (Build 607U)" ts="2013-10-07 16:48:11">
+<Routine name="STARTCOM" type="MAC" languagemode="0" timestamp="63102,59718"><![CDATA[
+ /**
+  * This runs the procedures that read and write ASTM files.
+  * 	^READASTM: 		procedure that reads incoming "requests" ASTM files	
+  * 	^WRITEASTM: 	procedure that writes the outgoing "results" ASTM files
+  *
+  * @example
+  * OMG>J ^STARTCOM
+  *	
+  * @author <a href="mailto:ivan.quintero@roche.com">Ivan Quintero</a>
+  *	
+  *
+ **/
+STARTCOM
+	// @constant time interval (in seconds)
+	set timeout = "5"
+	
+	// execution of procedures
+	
+	// incoming
+	do ^READHL7
+	
+	// outgoing
+	do ^WRITEHL7
+	
+	// wait the established timeout before starting over
+	hang timeout
+	
+	// start over
+	DO STARTCOM
+	QUIT
+ 
+]]></Routine>
+</Export>

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="Cache" version="21" zv="Cache for Windows (x86-32) 2007.1.3 (Build 607U)" ts="2013-10-07 16:48:35">
+<Routine name="USEREXIT" type="MAC" languagemode="0" timestamp="62972,52144"><![CDATA[
+	
+A0(pNHis,pAny,pNPet)
+	Q pNHis
+A1()
+	Q
+A2()
+	// generar listado de CHEMWELL
+	do ^CHEMWELLPREP(pet)
+	Q
+A3()
+	Q
+A4()
+	Q
+A5()
+	Q
+A6()
+	Q
+A7()
+	Q
+A8()
+	// build list of validated requests
+	set ^OMGMAP.ReqValidated(pet) = pet
+	Q
+A9()
+	Q
+A10()
+	Q
+A11(tipo)
+	Q
+A12(tipo)
+	Q
+A13(peticion,prueba)	
+	Q
+A14()
+	Q
+A15(mod,pet,sem)
+	Q sem
+	
+PREPARAR()
+	S grabar=0
+	S cade=usr_"#"_pet_"#"_ced_"#"_$p(^LPAC(ced),"#",1)_"#"_$p(^LPAC(ced),"#",2)_"#"_^LUORI($p(^LDIA(pet),"#",5))_"#"_$p(^LUSER($p(^LDIA(pet),"#",4)),"#",1)_"#"_$p(^LDIA(pet),"#",1)_"#"
+	s func=""
+	F  Q:sec=-1  D
+	. I sec'=0  D
+	.. I sec'=99  D
+	... I ^SECCPERM(sec)'=0  D
+	.... S grabar=1
+	.... S cade=cade_$p(^LUSEC(sec),"#",1)_";"
+	.... S pru=$n(^LDIA(pet,sec,-1))
+	.... F  Q:pru=-1  D
+	..... s ^ERROR("cade",pru)=pru
+	..... I $D(^USERFUNC(pru))'=0  D 
+	...... S func=func_^USERFUNC(pru)_";" 
+	..... S pru=$n(^LDIA(pet,sec,pru))
+	. S sec=$n(^LDIA(pet,sec))
+	S cade=cade_"#"_func
+	Q
+IMPRIMIR()
+	s ^alix(pet)=arch
+	s ^alix(pet,1)=cade
+	W $ZF(-1,"whoami>>c:\whoami.txt")
+	OPEN arch:"WNS":0
+	I $TEST'=0  D
+	. USE arch
+	. W cade
+	. CLOSE arch
+	E  D
+	. I grabar=1  D
+	.. S ^USERC(pet)=cade ;PARA GUARDAR EN COLA LA PETICION QUE FALLO AL NO PODER IMPRIMIR LA ETIQUETA
+	. I $D(^USERIP(usr))=1  D
+	.. K ^USERIP(usr)  ;BORRAR O DESLOGUEAR AL USUARIO DE ETIQUECB DE CACHE
+	. E  D
+	.. K ^USERIP("DEFEC")
+	Q
+COLA()
+	I grabar=1  D
+	. S ^USERC(pet)=cade ;PARA GUARDAR EN COLA LA PETICION QUE FALLO AL NO PODER IMPRIMIR LA ETIQUETA
+	Q	
+ 
+ 	/*S annoactu=$E(datos,1,4)
+	if $D(^IMPRESAS(annoactu,pet))=0  D
+	. S sec=$n(^LDIA(pet,-1))
+	. IF sec'=-1 D
+	.. S ^IMPRESAS(annoactu,pet)=""  ;global usado para no reimprimir al entrar nuevamente en la peticion
+	.. S ced=$p(datos,"#",2)
+	.. ;$D(^USERIP(usr))=1  D
+	.. IF 1=1  d 
+	... S arch="\\192.168.0.113\etiqueCB\"_pet_"."_usr
+	... D PREPARAR()
+	... D IMPRIMIR()
+	.. E  D
+	... IF $D(^USERIP("DEFEC"))=1  D  ;Usuario por defecto, ¿Existe este usuario?
+	.... S arch="\\"_^USERIP("DEFEC")_"\etiqueCB\"_pet_"."_usr ;Dirección a usar para el resto de los 
+	
+usuarios
+	.... D PREPARAR()
+	.... D IMPRIMIR()
+	... E  D  ;Crear global con peticiones en cola para ser impresos
+	.... D PREPARAR()
+	.... D COLA()*/
+]]></Routine>
+</Export>
